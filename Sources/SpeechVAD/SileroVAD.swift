@@ -239,13 +239,15 @@ public final class SileroVADModel {
 
         switch engine {
         case .mlx:
-            try await HuggingFaceDownloader.downloadWeights(
-                modelId: resolvedModelId,
-                to: cacheDir,
-                progressHandler: { progress in
-                    progressHandler?(progress * 0.8, "Downloading weights...")
-                }
-            )
+            if !HuggingFaceDownloader.weightsExist(in: cacheDir) {
+                try await HuggingFaceDownloader.downloadWeights(
+                    modelId: resolvedModelId,
+                    to: cacheDir,
+                    progressHandler: { progress in
+                        progressHandler?(progress * 0.8, "Downloading weights...")
+                    }
+                )
+            }
 
             progressHandler?(0.8, "Loading model...")
 
@@ -257,14 +259,17 @@ public final class SileroVADModel {
 
         case .coreml:
             #if canImport(CoreML)
-            try await HuggingFaceDownloader.downloadWeights(
-                modelId: resolvedModelId,
-                to: cacheDir,
-                additionalFiles: ["silero_vad.mlmodelc/**", "config.json"],
-                progressHandler: { progress in
-                    progressHandler?(progress * 0.8, "Downloading CoreML model...")
-                }
-            )
+            let coremlModelPath = cacheDir.appendingPathComponent("silero_vad.mlmodelc", isDirectory: true)
+            if !FileManager.default.fileExists(atPath: coremlModelPath.path) {
+                try await HuggingFaceDownloader.downloadWeights(
+                    modelId: resolvedModelId,
+                    to: cacheDir,
+                    additionalFiles: ["silero_vad.mlmodelc/**", "config.json"],
+                    progressHandler: { progress in
+                        progressHandler?(progress * 0.8, "Downloading CoreML model...")
+                    }
+                )
+            }
 
             progressHandler?(0.8, "Loading CoreML model...")
 
